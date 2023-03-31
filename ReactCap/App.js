@@ -11,7 +11,7 @@ import useUpdate from './useUpdate';
 import { useFonts } from "expo-font";
 
 const Stack = createNativeStackNavigator();
-const temp = false;
+const temp = true;
 
 export default function App({ navigation }) {
   const [userPref, setUserPref] = useState({

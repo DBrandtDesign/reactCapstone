@@ -12,6 +12,22 @@ const apiURL =
   "https://raw.githubusercontent.com/Meta-Mobile-Developer-PC/Working-With-Data-API/main/capstone.json";
 const categories = ["starters", "mains", "desserts"];
 
+const menuItem = ({ name, price, description, image }) => (
+    <View style={styles.item}>
+      <View style={styles.itemBody}>
+        <Text style={styles.name}>{name}</Text>
+        <Text style={styles.description}>{description}</Text>
+        <Text style={styles.price}>${price}</Text>
+      </View>
+      <Image
+        style={styles.itemImage}
+        source={{
+          uri: `https://github.com/Meta-Mobile-Developer-PC/Working-With-Data-API/blob/main/images/${image}?raw=true`,
+        }}
+      />
+    </View>
+  );
+
 const Home = ({ navigation }) => {
   const [profile, setProfile] = useState({
     firstName: "",
@@ -66,10 +82,30 @@ const Home = ({ navigation }) => {
   }
   
   return(
-    <View style={styles.container}>
-      <Text style={styles.title}> 
-        Home
-      </Text>
+    <View style={styles.container} onLayout={onLayoutRootView}>
+      <View style={styles.header}>
+        <Image
+          style={styles.logo}
+          source={require("../img/littleLemonLogo.png")}
+          accessible={true}
+          accessibilityLabel={"Little Lemon Logo"}
+        />
+        <Pressable
+          style={styles.avatar}
+          onPress={() => navigation.navigate("Profile")}
+        >
+          {profile.image ? (
+            <Image source={{ uri: profile.image }} style={styles.avatarImage} />
+          ) : (
+            <View style={styles.avatarEmpty}>
+              <Text style={styles.avatarEmptyText}>
+                {profile.firstName && Array.from(profile.firstName)[0]}
+                {profile.lastName && Array.from(profile.lastName)[0]}
+              </Text>
+            </View>
+          )}
+        </Pressable>
+      </View>
     </View>
   );
 }; 
@@ -81,10 +117,9 @@ const styles = StyleSheet.create({
     display: 'flex',
     //flexDirection: 'column',
     justifyContent: 'space-around',
-    alignItems: 'center',
     height: '100%',
     textAlign: 'center',
-    backgroundColor: '#999',
+    backgroundColor: '#FFF',
   },
   stretch: {
     resizeMode: 'contain',
@@ -137,5 +172,68 @@ const styles = StyleSheet.create({
     fontFamily: "MarkaziText-Regular",
     fontSize: 45,
     paddingTop: 10,
-  }
+  },
+  item: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
+    borderTopWidth: 1,
+    borderTopColor: "#cccccc",
+    paddingVertical: 10,
+  },
+  itemBody: {
+    flex: 1,
+  },
+  itemHeader: {
+    fontSize: 24,
+    paddingVertical: 8,
+    color: "#495e57",
+    backgroundColor: "#fff",
+    fontFamily: "Karla-Regular",
+  },
+  name: {
+    fontSize: 20,
+    color: "#000000",
+    paddingBottom: 5,
+    fontFamily: "Karla-Regular",
+  },
+  description: {
+    color: "#495e57",
+    paddingRight: 5,
+    fontFamily: "Karla-Regular",
+  },
+  price: {
+    fontSize: 20,
+    color: "#EE9972",
+    paddingTop: 5,
+    fontFamily: "Karla-Regular",
+  },
+  itemImage: {
+    width: 100,
+    height: 100,
+  },
+  logo: {
+    height: 50,
+    width: 150,
+    resizeMode: "contain",
+  },
+  avatar: {
+    flex: 1,
+    position: "absolute",
+    right: 10,
+    top: 10,
+  },
+  avatarImage: {
+    width: 50,
+    height: 50,
+    borderRadius: 25,
+  },
+  avatarEmpty: {
+    width: 50,
+    height: 50,
+    borderRadius: 25,
+    backgroundColor: "#0b9a6a",
+    alignItems: "center",
+    justifyContent: "center",
+  },
 });
