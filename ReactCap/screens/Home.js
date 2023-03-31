@@ -1,32 +1,73 @@
-import React, { useState } from 'react';
+import React, { useState, useCallback } from 'react';
 import { View, Text, Image, StyleSheet, TextInput, Pressable } from 'react-native';
 import { Spacer } from 'react-native-flex-layout';
 import {validateEmail, validateName} from "../util.js"
 //import "../index.css";
 
+import AsyncStorage from "@react-native-async-storage/async-storage";
+import { useFonts } from "expo-font";
+import * as SplashScreen from "expo-splash-screen";
 
-const greeting = "Let us get to know you";
+const apiURL =
+  "https://raw.githubusercontent.com/Meta-Mobile-Developer-PC/Working-With-Data-API/main/capstone.json";
+const categories = ["starters", "mains", "desserts"];
 
-const Home = () => {
-  const [name, setName] = useState('');
-  const [email, setEmail] = useState('');
-  const [nextNow, setNextNow] = useState(true);
+const Home = ({ navigation }) => {
+  const [profile, setProfile] = useState({
+    firstName: "",
+    lastName: "",
+    email: "",
+    phoneNumber: "",
+    orderStatus: false,
+    passwordChanges: false,
+    specialOffers: false,
+    newsletter: false,
+    image: "",
+  });
+  const [data, setData] = useState([]);
+  const [searchText, setSearchText] = useState("");
+  const [query, setQuery] = useState("");
+  // const [filterSelections, setFilterSelections] = useState(
+  //   sections.map(() => false)
+  // );
+  
+  const fetchData = async () => {
+    try {
+      const response = await fetch(apiURL);
+      const json = await response.json();
+      const menu = json.menu.map((item, index) => ({
+        id: index+1,
+        name: item.name,
+        price: item.price.toString(),
+        description: item.description,
+        image: item.image,
+        category: item.category,
+      }));
+      return menu;
+    } catch (error) {
+      console.error(error);
+    } finally {
+    }
+  };
 
-  const getIsFormValid = () => { 
-    //console.log('validations');
-    //console.log(validateEmail(email));
-    //console.log(validateName(name));
-    //console.log(Boolean(name));
-    return ( 
-      name && 
-      validateEmail(email) && 
-      validateName(name)
-    ); 
-  }; 
-
+  
+  //Font Stuff
+  const [fontsLoaded] = useFonts({
+    "Karla-Regular": require("../assets/fonts/Karla-Regular.ttf"),
+    "MarkaziText-Regular": require("../assets/fonts/MarkaziText-Regular.ttf"),
+  });
+  const onLayoutRootView = useCallback(async () => {
+    if (fontsLoaded) {
+      await SplashScreen.hideAsync();
+    }
+  }, [fontsLoaded]);
+  if (!fontsLoaded) {
+    return null;
+  }
+  
   return(
     <View style={styles.container}>
-      <Text style={styles.header}> 
+      <Text style={styles.title}> 
         Home
       </Text>
     </View>
@@ -88,13 +129,13 @@ const styles = StyleSheet.create({
     fontSize: 24,
   },
   header: {
-    //fontFamily: "Regular",
-    fontSize: 28,
+    fontFamily: "Karla-Regular",
+    fontSize: 38,
     paddingTop: 80,
   },
   title: {
-    //fontFamily: "Regular",
-    fontSize: 28,
+    fontFamily: "MarkaziText-Regular",
+    fontSize: 45,
     paddingTop: 10,
   }
 });

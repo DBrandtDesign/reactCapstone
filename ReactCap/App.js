@@ -1,40 +1,22 @@
 import React, { useState, useEffect } from 'react';
-import { View } from 'react-native';
+import { Alert } from 'react-native';
 import Onboarding from './screens/Onboarding';
 import Profile from './screens/Profile';
 import Home from './screens/Home.js'
-import SplashScreen from './screens/SplashScreen'
+import * as SplashScreen from "expo-splash-screen";
 import { NavigationContainer } from '@react-navigation/native';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import useUpdate from './useUpdate';
+import { useFonts } from "expo-font";
 
 const Stack = createNativeStackNavigator();
-const temp = true;
+const temp = false;
 
 export default function App({ navigation }) {
   const [userPref, setUserPref] = useState({
     onboarding: true,
-    loggedIn: false,
-    latestNews: false,
   });
-
-  useEffect(() => {
-    // Populating preferences from storage using AsyncStorage.multiGet
-    (async () => {
-      try {
-        const values = await AsyncStorage.multiGet(Object.keys(userPref));
-        const initialState = values.reduce((acc, curr) => {
-          // Every item in the values array is itself an array with a string key and a stringified value, i.e ['pushNotifications', 'false']
-          acc[curr[0]] = JSON.parse(curr[1]);
-          return acc;
-        }, {});
-        setUserPref(initialState);
-      } catch (e) {
-        Alert.alert(`An error occurred: ${e.message}`);
-      }
-    })();
-  }, []);
 
   // This effect only runs when the preferences state updates, excluding initial mount
   useUpdate(() => {
@@ -57,18 +39,18 @@ export default function App({ navigation }) {
   //   return <SplashScreen />;
   // }
   return (
-    <>
-      <NavigationContainer>
-        <Stack.Navigator>
-          { temp ? (
-            <Stack.Screen name="Home" component={Home} />
-            <Stack.Screen name="Profile" component={Profile} />
-          ) : (
-            // User is NOT signed in
-            <Stack.Screen name="Onboarding" component={Onboarding} />
-          )}
-        </Stack.Navigator>
-      </NavigationContainer>
-    </>
+    <NavigationContainer>
+      <Stack.Navigator>
+        { temp ? (
+          <>
+            <Stack.Screen name="Home" component={Home} options={{ headerShown: false }} />
+            <Stack.Screen name="Profile" component={Profile} options={{ headerShown: false }} />
+          </>
+        ) : (
+          // User is NOT signed in
+          <Stack.Screen name="Onboarding" component={Onboarding} options={{ headerShown: false }} />
+        )}
+      </Stack.Navigator>
+    </NavigationContainer>
   );
 }
