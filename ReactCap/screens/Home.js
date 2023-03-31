@@ -1,7 +1,8 @@
-import React, { useState, useCallback } from 'react';
-import { View, Text, Image, StyleSheet, TextInput, Pressable } from 'react-native';
-import { Spacer } from 'react-native-flex-layout';
-import {validateEmail, validateName} from "../util.js"
+import React, { useState, useCallback, useEffect } from 'react';
+import { View, Text, Image, StyleSheet, TextInput, Pressable, SectionList, Alert } from 'react-native';
+import { createTable, getMenuItems, saveMenuItems, filterByQueryAndCategories, } from "../database";
+import { Searchbar } from "react-native-paper";
+import { getSectionListData, useUpdateEffect, validateEmail, validateName } from "../util";
 //import "../index.css";
 
 import AsyncStorage from "@react-native-async-storage/async-storage";
@@ -12,17 +13,17 @@ const apiURL =
   "https://raw.githubusercontent.com/Meta-Mobile-Developer-PC/Working-With-Data-API/main/capstone.json";
 const categories = ["starters", "mains", "desserts"];
 
-const menuItem = ({ name, price, description, image }) => (
+const MenuItem = ({ name, price, description, imageFileName }) => (
     <View style={styles.item}>
       <View style={styles.itemBody}>
         <Text style={styles.name}>{name}</Text>
-        <Text style={styles.description}>{description}</Text>
+        <Text numberOfLines={2} ellipsizeMode='tail' style={styles.description}>{description}</Text>
         <Text style={styles.price}>${price}</Text>
       </View>
       <Image
         style={styles.itemImage}
         source={{
-          uri: `https://github.com/Meta-Mobile-Developer-PC/Working-With-Data-API/blob/main/images/${image}?raw=true`,
+          uri: `https://github.com/Meta-Mobile-Developer-PC/Working-With-Data-API/blob/main/images/${imageFileName}?raw=true`,
         }}
       />
     </View>
@@ -30,8 +31,8 @@ const menuItem = ({ name, price, description, image }) => (
 
 const Home = ({ navigation }) => {
   const [profile, setProfile] = useState({
-    firstName: "",
-    lastName: "",
+    firstName: "D",
+    lastName: "B",
     email: "",
     phoneNumber: "",
     orderStatus: false,
@@ -46,7 +47,7 @@ const Home = ({ navigation }) => {
   // const [filterSelections, setFilterSelections] = useState(
   //   sections.map(() => false)
   // );
-  
+
   const fetchData = async () => {
     try {
       const response = await fetch(apiURL);
@@ -66,6 +67,30 @@ const Home = ({ navigation }) => {
     }
   };
 
+  useEffect(() => {
+    (async () => {
+      let menuItems = [];
+      try {
+        await createTable();
+        menuItems = await getMenuItems();
+        if (!menuItems.length) {
+          menuItems = await fetchData();
+          saveMenuItems(menuItems);
+        }
+        const sectionListData = getSectionListData(menuItems);
+        setData(sectionListData);
+        const getProfile = await AsyncStorage.getItem("Profile");
+        //setProfile(JSON.parse(getProfile));
+      } catch (e) {
+        Alert.alert(e.message);
+      }
+    })();
+  }, []);
+
+  const handleSearchChange = text => {
+    setSearchText(text);
+    debouncedLookup(text);
+  };
   
   //Font Stuff
   const [fontsLoaded] = useFonts({
@@ -94,7 +119,7 @@ const Home = ({ navigation }) => {
           style={styles.avatar}
           onPress={() => navigation.navigate("Profile")}
         >
-          {profile.image ? (
+          {profile && profile.image ? (
             <Image source={{ uri: profile.image }} style={styles.avatarImage} />
           ) : (
             <View style={styles.avatarEmpty}>
@@ -106,6 +131,56 @@ const Home = ({ navigation }) => {
           )}
         </Pressable>
       </View>
+      <View style={styles.heroSection}>
+        <Text style={styles.heroHeader}>Little Lemon</Text>
+        <View style={styles.heroBody}>
+          <View style={styles.heroContent}>
+            <Text style={styles.heroSubHeader}>Chicago</Text>
+            <Text style={styles.heroText}>
+              We are a family owned Mediterranean restaurant, focused on
+              traditional recipes served with a modern twist.
+            </Text>
+          </View>
+          <Image
+            style={styles.heroImage}
+            source={require("../assets/food.png")}
+            accessible={true}
+            accessibilityLabel={"Little Lemon Food"}
+          />
+        </View>
+        <Searchbar
+          placeholder="Search"
+          placeholderTextColor="#333333"
+          onChangeText={handleSearchChange}
+          value={searchText}
+          style={styles.searchBar}
+          iconColor="#333333"
+          inputStyle={{ color: "#333333" }}
+          elevation={0}
+        />
+      </View>
+      <Text style={styles.title}>ORDER FOR DELIVERY!</Text>
+      {/* <Filters
+        selections={filterSelections}
+        onChange={handleFiltersChange}
+        sections={sections}
+      /> */}
+      <SectionList
+        style={styles.sectionList}
+        sections={data}
+        keyExtractor={item => item.id}
+        renderItem={({ item }) => (
+          <MenuItem
+            name={item.name}
+            price={item.price}
+            description={item.description}
+            imageFileName={item.image}
+          />
+        )}
+        renderSectionHeader={({ section: { name } }) => (
+          <Text style={styles.itemHeader}>{name}</Text>
+        )}
+      />
     </View>
   );
 }; 
@@ -114,11 +189,7 @@ export default Home;
 
 const styles = StyleSheet.create({
   container: {
-    display: 'flex',
-    //flexDirection: 'column',
-    justifyContent: 'space-around',
-    height: '100%',
-    textAlign: 'center',
+    flex: 1,
     backgroundColor: '#FFF',
   },
   stretch: {
@@ -166,12 +237,16 @@ const styles = StyleSheet.create({
   header: {
     fontFamily: "Karla-Regular",
     fontSize: 38,
-    paddingTop: 80,
+    paddingTop: 40,
+    paddingBottom: 10,
+    flexDirection: "row",
+    justifyContent: "center"
   },
   title: {
-    fontFamily: "MarkaziText-Regular",
-    fontSize: 45,
+    fontFamily: "Karla-Regular",
+    fontSize: 30,
     paddingTop: 10,
+    textAlign: "center",
   },
   item: {
     flexDirection: "row",
@@ -192,19 +267,21 @@ const styles = StyleSheet.create({
     fontFamily: "Karla-Regular",
   },
   name: {
-    fontSize: 20,
+    fontSize: 24,
     color: "#000000",
     paddingBottom: 5,
     fontFamily: "Karla-Regular",
   },
   description: {
     color: "#495e57",
+    fontSize: 20,
     paddingRight: 5,
+    
     fontFamily: "Karla-Regular",
   },
   price: {
     fontSize: 20,
-    color: "#EE9972",
+    color: "#495e57",
     paddingTop: 5,
     fontFamily: "Karla-Regular",
   },
@@ -220,8 +297,8 @@ const styles = StyleSheet.create({
   avatar: {
     flex: 1,
     position: "absolute",
-    right: 10,
-    top: 10,
+    right: 18,
+    top: 40,
   },
   avatarImage: {
     width: 50,
@@ -235,5 +312,46 @@ const styles = StyleSheet.create({
     backgroundColor: "#0b9a6a",
     alignItems: "center",
     justifyContent: "center",
+  },
+  heroSection: {
+    backgroundColor: "#495e57",
+    padding: 15,
+  },
+  heroHeader: {
+    color: "#f4ce14",
+    fontSize: 80,
+    fontFamily: "MarkaziText-Regular",
+    marginTop: -10,
+  },
+  heroSubHeader: {
+    color: "#fff",
+    fontSize: 50,
+    fontFamily: "MarkaziText-Regular",
+    marginTop: -20,
+  },
+  heroText: {
+    color: "#fff",
+    fontFamily: "Karla-Regular",
+    fontSize: 20,
+    marginTop: 20,
+  },
+  heroBody: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+  },
+  heroContent: {
+    flex: 1,
+  },
+  heroImage: {
+    width: 150,
+    height: 150,
+    borderRadius: 12,
+  },
+  sectionList: {
+    paddingHorizontal: 16,
+  },
+  searchBar: {
+    marginTop: 15,
+    backgroundColor: "#e4e4e4",
   },
 });
