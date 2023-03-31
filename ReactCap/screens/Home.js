@@ -3,6 +3,7 @@ import { View, Text, Image, StyleSheet, TextInput, Pressable, SectionList, Alert
 import { createTable, getMenuItems, saveMenuItems, filterByQueryAndCategories, } from "../database";
 import { Searchbar } from "react-native-paper";
 import { getSectionListData, useUpdateEffect, validateEmail, validateName } from "../util";
+import Categories from "../components/Categories";
 //import "../index.css";
 
 import AsyncStorage from "@react-native-async-storage/async-storage";
@@ -11,7 +12,7 @@ import * as SplashScreen from "expo-splash-screen";
 
 const apiURL =
   "https://raw.githubusercontent.com/Meta-Mobile-Developer-PC/Working-With-Data-API/main/capstone.json";
-const categories = ["starters", "mains", "desserts"];
+const sections = ["starters", "mains", "desserts"];
 
 const MenuItem = ({ name, price, description, imageFileName }) => (
     <View style={styles.item}>
@@ -44,9 +45,9 @@ const Home = ({ navigation }) => {
   const [data, setData] = useState([]);
   const [searchText, setSearchText] = useState("");
   const [query, setQuery] = useState("");
-  // const [filterSelections, setFilterSelections] = useState(
-  //   sections.map(() => false)
-  // );
+  const [filterSelections, setFilterSelections] = useState(
+    sections.map(() => false)
+  );
 
   const fetchData = async () => {
     try {
@@ -92,6 +93,12 @@ const Home = ({ navigation }) => {
     debouncedLookup(text);
   };
   
+  const handleFiltersChange = async index => {
+    const fixed = [...filterSelections];
+    fixed[index] = !filterSelections[index];
+    setFilterSelections(fixed);
+  };
+
   //Font Stuff
   const [fontsLoaded] = useFonts({
     "Karla-Regular": require("../assets/fonts/Karla-Regular.ttf"),
@@ -160,11 +167,11 @@ const Home = ({ navigation }) => {
         />
       </View>
       <Text style={styles.title}>ORDER FOR DELIVERY!</Text>
-      {/* <Filters
+      <Categories
         selections={filterSelections}
         onChange={handleFiltersChange}
         sections={sections}
-      /> */}
+      />
       <SectionList
         style={styles.sectionList}
         sections={data}
@@ -245,7 +252,7 @@ const styles = StyleSheet.create({
   title: {
     fontFamily: "Karla-Regular",
     fontSize: 30,
-    paddingTop: 10,
+    padding: 10,
     textAlign: "center",
   },
   item: {
