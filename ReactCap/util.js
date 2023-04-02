@@ -54,8 +54,9 @@ export const validateEmail = (email) => {
 };
 
 export const validateName = (name) => {
-    return String(name)
-      .match(
-        /^(([a-zA-Z])*)$/
-      );
-  };
+  return String(name).match(/^(([a-zA-Z])*)$/) && name.length > 0;
+};
+
+export const validateNumber = (number) => {
+  return String(number).match(/^(([0-9])*)$/) && number.length == 10;
+};

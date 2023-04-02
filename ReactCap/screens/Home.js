@@ -3,7 +3,6 @@ import { View, Text, Image, StyleSheet, TextInput, Pressable, SectionList, Alert
 import { createTable, getMenuItems, saveMenuItems, filterByQueryAndCategories, } from "../database";
 import { Searchbar } from "react-native-paper";
 import { getSectionListData, useUpdateEffect, validateEmail, validateName } from "../util";
-//import "../index.css";
 
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { useFonts } from "expo-font";
@@ -31,8 +30,8 @@ const MenuItem = ({ name, price, description, imageFileName }) => (
 
 const Home = ({ navigation }) => {
   const [profile, setProfile] = useState({
-    firstName: "D",
-    lastName: "B",
+    firstName: "",
+    lastName: "",
     email: "",
     phoneNumber: "",
     orderStatus: false,
@@ -111,7 +110,7 @@ const Home = ({ navigation }) => {
       <View style={styles.header}>
         <Image
           style={styles.logo}
-          source={require("../img/littleLemonLogo.png")}
+          source={require("../assets/littleLemonLogo.png")}
           accessible={true}
           accessibilityLabel={"Little Lemon Logo"}
         />

@@ -1,15 +1,17 @@
-import React, { useState, useCallback, useRef } from 'react';
-import { View, Text, Image, StyleSheet, TextInput, Pressable, KeyboardAvoidingView } from 'react-native';
+import React, { useState, useCallback, useRef, useContext } from 'react';
+import { View, Text, Image, StyleSheet, TextInput, Pressable, Keyboard, KeyboardAvoidingView, TouchableWithoutFeedback } from 'react-native';
 import {validateEmail, validateName} from "../util"
 import { useFonts } from "expo-font";
 import PagerView from "react-native-pager-view";
 import * as SplashScreen from "expo-splash-screen";
-//import "../index.css";
+import { AuthContext } from '../context/AuthContextCreate';
+import AsyncStorage from "@react-native-async-storage/async-storage";
 
 
 const greeting = "Let us get to know you";
 
 function Onboarding() {
+  const { logIn } = useContext(AuthContext);
   const [firstName, onChangeFirstName] = useState("");
   const [lastName, onChangeLastName] = useState("");
   const [email, onChangeEmail] = useState("");
@@ -42,7 +44,15 @@ function Onboarding() {
     return ( 
       validateEmail(email)
     ); 
-  }; 
+  };
+
+  completeOnboarding = async () => {
+    await AsyncStorage.setItem("IS_LOGGED_IN", "true");
+    await AsyncStorage.setItem("FIRSTNAME", firstName);
+    await AsyncStorage.setItem("LASTNAME", lastName);
+    await AsyncStorage.setItem("EMAIL", email);
+    logIn();
+  };
 
   return(
     <>
@@ -51,94 +61,98 @@ function Onboarding() {
         behavior={Platform.OS === "ios" ? "padding" : "height"}
         onLayout={onLayoutRootView}
       >
-        <View style={styles.top}>
-          <Image 
-            style={styles.stretch}
-            source={require('../assets/logo.png')}
-            alt="logo" 
-          />
-        </View>
-        <Text style={styles.header}> 
-          {greeting} 
-        </Text>
-        <PagerView
-          style={styles.pager}
-          scrollEnabled={false}
-          initialPage={0}
-          ref={pagerRef}
-        >
-          <View style={styles.page} key="1">
-            <View style={styles.pageContainer}>
-              <Text style={styles.title}> 
-                First Name
-              </Text>
-              <TextInput
-                style={styles.input}
-                value={firstName}
-                autoComplete="given-name"
-                onChangeText={onChangeFirstName}
-                placeholder="First Name"
-              />
-              <Text style={styles.title}> 
-                Last Name
-              </Text>
-              <TextInput
-                style={styles.input}
-                value={lastName}
-                autoComplete="name-family"
-                onChangeText={onChangeLastName}
-                placeholder="Last Name"
+        <TouchableWithoutFeedback onPress={Keyboard.dismiss}>
+          <View style={styles.container}>
+            <View style={styles.top}>
+              <Image 
+                style={styles.stretch}
+                source={require('../assets/logo.png')}
+                alt="logo" 
               />
             </View>
-            <View style={styles.pageIndicator}>
-              <View style={[styles.pageDot, styles.pageDotActive]}></View>
-              <View style={styles.pageDot}></View>
-            </View>
-            <View style={styles.buttons}>
-              <Pressable
-                style={[styles.btn, getAreNamesValid() ? "" : styles.btnDisabled]}
-                onPress={() => pagerRef.current.setPage(1)}
-                disabled={!getAreNamesValid()}
-              >
-                <Text style={styles.buttonText}>NEXT</Text>
-              </Pressable>
-            </View>
+            <Text style={styles.header}> 
+              {greeting} 
+            </Text>
+            <PagerView
+              style={styles.pager}
+              scrollEnabled={false}
+              initialPage={0}
+              ref={pagerRef}
+            >
+              <View style={styles.page} key="1">
+                <View style={styles.pageContainer}>
+                  <Text style={styles.title}> 
+                    First Name
+                  </Text>
+                  <TextInput
+                    style={styles.input}
+                    value={firstName}
+                    autoComplete="given-name"
+                    onChangeText={onChangeFirstName}
+                    placeholder="First Name"
+                  />
+                  <Text style={styles.title}> 
+                    Last Name
+                  </Text>
+                  <TextInput
+                    style={styles.input}
+                    value={lastName}
+                    autoComplete="family-name"
+                    onChangeText={onChangeLastName}
+                    placeholder="Last Name"
+                  />
+                </View>
+                <View style={styles.pageIndicator}>
+                  <View style={[styles.pageDot, styles.pageDotActive]}></View>
+                  <View style={styles.pageDot}></View>
+                </View>
+                <View style={styles.buttons}>
+                  <Pressable
+                    style={[styles.btn, getAreNamesValid() ? "" : styles.btnDisabled]}
+                    onPress={() => { pagerRef.current.setPage(1); }}
+                    disabled={!getAreNamesValid()}
+                  >
+                    <Text style={styles.buttonText}>NEXT</Text>
+                  </Pressable>
+                </View>
+              </View>
+              <View style={styles.page} key="2">
+                <View style={styles.pageContainer}>
+                  <Text style={styles.title}> 
+                    Email
+                  </Text>
+                  <TextInput
+                    style={styles.input}
+                    value={email}
+                    autoCapitalize="none"
+                    autoComplete="email"
+                    onChangeText={onChangeEmail}
+                    placeholder="Email"
+                  />
+                </View>
+                <View style={styles.pageIndicator}>
+                  <View style={styles.pageDot}></View>
+                  <View style={[styles.pageDot, styles.pageDotActive]}></View>
+                </View>
+                <View style={styles.buttons}>
+                  <Pressable
+                    style={styles.flexBtn}
+                    onPress={() => pagerRef.current.setPage(0)}
+                  >
+                    <Text style={styles.buttonText}>Back</Text>
+                  </Pressable>
+                  <Pressable
+                    style={[styles.flexBtn, getIsEmailValid ? "" : styles.btnDisabled]}
+                    onPress={completeOnboarding}
+                    disabled={!getIsEmailValid}
+                  >
+                    <Text style={styles.buttonText}>Submit</Text>
+                  </Pressable>
+                </View>
+              </View>
+            </PagerView>
           </View>
-          <View style={styles.page} key="2">
-            <View style={styles.pageContainer}>
-              <Text style={styles.title}> 
-                Email
-              </Text>
-              <TextInput
-                style={styles.input}
-                value={email}
-                autoCapitalize="none"
-                autoComplete="email"
-                onChangeText={onChangeEmail}
-                placeholder="Email"
-              />
-            </View>
-            <View style={styles.pageIndicator}>
-              <View style={styles.pageDot}></View>
-              <View style={[styles.pageDot, styles.pageDotActive]}></View>
-            </View>
-            <View style={styles.buttons}>
-              <Pressable
-                style={styles.flexBtn}
-                onPress={() => pagerRef.current.setPage(0)}
-              >
-                <Text style={styles.buttonText}>Back</Text>
-              </Pressable>
-              <Pressable
-                style={[styles.flexBtn, getIsEmailValid() ? "" : styles.btnDisabled]}
-                //onPress={() => onboard({ firstName, lastName, email })}
-                disabled={!getIsEmailValid()}
-              >
-                <Text style={styles.buttonText}>Submit</Text>
-              </Pressable>
-            </View>
-          </View>
-        </PagerView>
+        </TouchableWithoutFeedback>
       </KeyboardAvoidingView>
     </>
   );
