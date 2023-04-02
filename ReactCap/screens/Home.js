@@ -1,9 +1,9 @@
-import React, { useState, useCallback, useEffect } from 'react';
-import { View, Text, Image, StyleSheet, TextInput, Pressable, SectionList, Alert } from 'react-native';
+import React, { useState, useCallback, useEffect, useMemo } from 'react';
+import { View, Text, Image, StyleSheet, TextInput, Pressable, SectionList, Alert, ScrollView, FlatList } from 'react-native';
 import { createTable, getMenuItems, saveMenuItems, filterByQueryAndCategories, } from "../database";
 import { Searchbar } from "react-native-paper";
 import { getSectionListData, useUpdateEffect, validateEmail, validateName } from "../util";
-
+import debounce from "lodash.debounce";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { useFonts } from "expo-font";
 import * as SplashScreen from "expo-splash-screen";
@@ -29,23 +29,21 @@ const MenuItem = ({ name, price, description, imageFileName }) => (
   );
 
 const Home = ({ navigation }) => {
-  const [profile, setProfile] = useState({
+  const [data, setData] = useState({
+    avatar: "",
     firstName: "",
     lastName: "",
-    email: "",
-    phoneNumber: "",
-    orderStatus: false,
-    passwordChanges: false,
-    specialOffers: false,
-    newsletter: false,
-    image: "",
+    menuItems: [],
   });
-  const [data, setData] = useState([]);
+
+  const [categories, setCategories] = useState({
+    Starters: false,
+    Mains: false,
+    Desserts: false,
+    Drinks: false,
+  });
   const [searchText, setSearchText] = useState("");
   const [query, setQuery] = useState("");
-  // const [filterSelections, setFilterSelections] = useState(
-  //   sections.map(() => false)
-  // );
 
   const fetchData = async () => {
     try {
@@ -66,30 +64,95 @@ const Home = ({ navigation }) => {
     }
   };
 
-  useEffect(() => {
+  useUpdateEffect(() => {
     (async () => {
-      let menuItems = [];
       try {
-        await createTable();
-        menuItems = await getMenuItems();
-        if (!menuItems.length) {
-          menuItems = await fetchData();
-          saveMenuItems(menuItems);
-        }
-        const sectionListData = getSectionListData(menuItems);
-        setData(sectionListData);
-        const getProfile = await AsyncStorage.getItem("Profile");
-        //setProfile(JSON.parse(getProfile));
+        const selectedCategorieNames = Object.keys(categories).reduce(
+          (selectedCategories, category) => {
+            if (categories[category]) { selectedCategories.push(category); }
+            return selectedCategories;
+          }, []
+        );
+        const menuItems = await filterByQueryAndCategories(
+          query,
+          selectedCategorieNames
+        );
+        setData((prev) => ({
+          ...prev,
+          menuItems: menuItems,
+        }));
       } catch (e) {
         Alert.alert(e.message);
       }
     })();
+  }, [categories, query]);
+
+  const lookup = useCallback((q) => {
+    setQuery(q);
   }, []);
 
-  const handleSearchChange = text => {
+  const debouncedLookup = useMemo(() => debounce(lookup, 500), [lookup]);
+
+  const handleSearchChange = (text) => {
     setSearchText(text);
     debouncedLookup(text);
   };
+
+  getFirstLetterUp = (string) => {
+    if (string) {
+      return string.charAt(0).toUpperCase();
+    } else {
+      return "";
+    }
+  };
+
+  readSavedData = async () => {
+    const avatar = (await AsyncStorage.getItem("AVATAR")) ?? "";
+    const firstName = (await AsyncStorage.getItem("FIRSTNAME")) ?? "";
+    const lastName = (await AsyncStorage.getItem("LASTNAME")) ?? "";
+
+    setData((prev) => ({
+      ...prev,
+      avatar: avatar,
+      firstName: firstName,
+      lastName: lastName,
+    }));
+  };
+
+  const readMenuItems = async () => {
+    try {
+      await createTable();
+      let menuItems = await getMenuItems();
+
+      if (!menuItems.length) {
+        menuItems = await fetchData();
+        saveMenuItems(menuItems);
+      }
+
+      setCategories(() => {
+        return [...new Set(menuItems.map((item) => item.category))].reduce(
+          (a, v) => ({ ...a, [v]: true }),
+          {}
+        );
+      });
+
+      setData((prev) => ({
+        ...prev,
+        menuItems: menuItems,
+      }));
+    } catch (e) {
+      // Handle error
+      Alert.alert(e.message);
+    }
+  };
+
+  useEffect(() => {
+    const unsubscribe = navigation.addListener("focus", () => {
+      readSavedData();
+      readMenuItems();
+    });
+    return unsubscribe;
+  }, [navigation]);
   
   //Font Stuff
   const [fontsLoaded] = useFonts({
@@ -106,7 +169,7 @@ const Home = ({ navigation }) => {
   }
   
   return(
-    <View style={styles.container} onLayout={onLayoutRootView}>
+    <ScrollView style={styles.container} onLayout={onLayoutRootView}>
       <View style={styles.header}>
         <Image
           style={styles.logo}
@@ -118,13 +181,13 @@ const Home = ({ navigation }) => {
           style={styles.avatar}
           onPress={() => navigation.navigate("Profile")}
         >
-          {profile && profile.image ? (
-            <Image source={{ uri: profile.image }} style={styles.avatarImage} />
+          {data.avatar ? (
+            <Image source={{ uri: data.avatar }} style={styles.avatarImage} />
           ) : (
             <View style={styles.avatarEmpty}>
               <Text style={styles.avatarEmptyText}>
-                {profile.firstName && Array.from(profile.firstName)[0]}
-                {profile.lastName && Array.from(profile.lastName)[0]}
+                {data.firstName && Array.from(data.firstName)[0]}
+                {data.lastName && Array.from(data.lastName)[0]}
               </Text>
             </View>
           )}
@@ -159,12 +222,41 @@ const Home = ({ navigation }) => {
         />
       </View>
       <Text style={styles.title}>ORDER FOR DELIVERY!</Text>
-      {/* <Filters
-        selections={filterSelections}
-        onChange={handleFiltersChange}
-        sections={sections}
-      /> */}
-      <SectionList
+      <ScrollView
+        horizontal={true}
+        contentContainerStyle={styles.categoryButtonsSection}
+      >
+        {Object.keys(categories).map((category, index) => (
+          <Pressable
+            onPress={() => 
+              setCategories((prev) => {
+                const newState = { ...prev };
+                newState[category] = !newState[category];
+                return newState;
+              })
+            }
+            style={[
+              styles.categoryButton,
+              {
+                flex: 1 / Object.keys(categories).length,
+                backgroundColor: categories[category] ? "#495e57" : "#e9ebea",
+              },
+            ]}
+          >
+            <View>
+              <Text
+                style={[
+                  styles.categoryButtonText,
+                  { color: categories[category] ? "#e9ebea" : "#495e57",},
+                ]}
+              >
+                {category}
+              </Text>
+            </View>
+          </Pressable>
+        ))}
+      </ScrollView>
+      {/* <SectionList
         style={styles.sectionList}
         sections={data}
         keyExtractor={item => item.id}
@@ -179,8 +271,34 @@ const Home = ({ navigation }) => {
         renderSectionHeader={({ section: { name } }) => (
           <Text style={styles.itemHeader}>{name}</Text>
         )}
+      /> */}
+      <FlatList
+        style={styles.dishes}
+        data={data.menuItems}
+        keyExtractor={(dish) => dish.name}
+        renderItem={({ item }) => (
+          <View style={styles.dishInfoPicture}>
+            <View style={styles.dishInfo}>
+              <Text style={styles.dishName}>{item.name}</Text>
+              <Text style={styles.dishDescription}>
+                {item.description.length > 50
+                  ? item.description.substr(0, 50) + "\u2026"
+                  : item.description}
+              </Text>
+              <Text style={styles.dishPrice}>{item.price}</Text>
+            </View>
+            <View style={styles.dishPictureWrapper}>
+              <Image
+                style={styles.dishPicture}
+                source={{
+                  uri: `https://github.com/Meta-Mobile-Developer-PC/Working-With-Data-API/blob/main/images/${item.image}?raw=true`,
+                }}
+              />
+            </View>
+          </View>
+        )}
       />
-    </View>
+    </ScrollView>
   );
 }; 
     
@@ -352,5 +470,76 @@ const styles = StyleSheet.create({
   searchBar: {
     marginTop: 15,
     backgroundColor: "#e4e4e4",
+  },
+  category: {
+    marginTop: 20,
+    paddingLeft: 15,
+    paddingRight: 15,
+  },
+  categoryTitle: {
+    textTransform: "uppercase",
+    fontSize: 22,
+    fontWeight: "bold",
+  },
+  categoryButtonsSection: {
+    flexDirection: "row",
+    marginTop: 12,
+    marginBottom: 25,
+  },
+  categoryButton: {
+    justifyContent: "center",
+    alignItems: "center",
+    padding: 7,
+    paddingLeft: 18,
+    paddingRight: 18,
+    marginLeft: 6,
+    marginRight: 6,
+    borderRadius: 10,
+  },
+  categoryButtonText: {
+    fontSize: 14,
+    textTransform: "uppercase",
+    fontWeight: "bold",
+  },
+  dishes: {
+    borderTopColor: "#cccccc",
+    borderTopWidth: 1,
+    paddingTop: 10,
+    marginBottom: 30,
+    marginLeft: 15,
+    marginRight: 15,
+  },
+  dishInfoPicture: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    paddingTop: 8,
+    paddingBottom: 8,
+    borderBottomColor: "#eaeceb",
+    borderBottomWidth: 1,
+  },
+  dishInfo: {
+    width: "60%",
+  },
+  dishName: {
+    fontWeight: "bold",
+    fontSize: 16,
+    marginBottom: 10,
+  },
+  dishDescription: {
+    color: "#495e57",
+    marginBottom: 6,
+  },
+  dishPrice: {
+    color: "#495e57",
+    fontWeight: "700",
+  },
+  dishPictureWrapper: {
+    width: "30%",
+    justifyContent: "center",
+    alignContent: "center",
+  },
+  dishPicture: {
+    width: 100,
+    height: 100,
   },
 });
